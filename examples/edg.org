@@ -37,13 +37,15 @@ Visit [[https://docs.google.com/document/d/1wnKtZ9j2as_6CMCfBrAP4Z11yKeVaIJXV5Ls
 
 #+begin_example
 $ recibi parse -o edg.arxiv -m '(ar[Xx]iv:(\d+)\.(\d+))' EDG-Publications.txt
-$ recibi inspire -o -S 1000 edg.arxiv | recibi tag -o edg.bib -t edg
+$ recibi inspire -o -S 1000 edg.arxiv | \
+  recibi tag -o edg.bib -t edg -T collaboration
 #+end_example
 
 To generate a bib file of a single EDG member:
 
 #+begin_example
-$ recibi inspire -S 1000 author:B.Viren.1 | recibi tag -t bv -o bv.bib -
+$ recibi inspire -S 1000 author:B.Viren.1 | \
+  recibi tag -t bv -T collaboration -o bv.bib -
 #+end_example
 
 To merge bib files

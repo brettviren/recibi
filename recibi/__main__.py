@@ -100,17 +100,19 @@ def filter(output, match, number, bibfiles):
               help="Output file")
 @click.option("-t", "--tag", multiple=True,
               help="A value to add to the 'keywords' field")
+@click.option("-T", "--transfer", multiple=True,
+              help="Transfer given field to a keyword")
 @click.argument('bibfiles', nargs=-1, type=click.Path())
-def tag(output, tag, bibfiles):
+def tag(output, tag, transfer, bibfiles):
     '''
     Add tag(s) to the "keywords" field.
 
     An input file name of "-" is interpreted to be stdin.
     '''
-    if not tag:
-        raise click.UsageError("at least one tag is required")
-
     tags = ','.join(tag)
+
+    def squash(val):
+        return val.lower().replace(" ", "").replace("-", "")
 
     def add_tag(key, entry):
         old = entry.fields.get("keywords", None)
@@ -120,10 +122,18 @@ def tag(output, tag, bibfiles):
             new = old + "," + tags
 
         # make unique and sorted
-        new = list(set(new.split(',')))
+        new = set(new.split(','))
+
+        for field in transfer:
+            val = entry.fields.get(field, None)
+            if val is None:
+                continue
+            new.add(squash(val))
+        new = list([n for n in new if n])
         new.sort()
         new = ','.join(new)
         entry.fields['keywords'] = new
+
         return (key, entry)
 
     dump(load(bibfiles, mutate=add_tag), output);
