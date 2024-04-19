@@ -1,0 +1,62 @@
+#+title: Using recibi in EDG
+
+* Context
+
+For funding review reports, various selective bibliographies are wanted.  Given
+the large publication output from the group, manually performing these
+selections is labor intensive and error prone.  Some of the selection criteria
+include:
+
+- Major contribute from a group member.
+- A given time period.
+- A specific collaboration.
+- General non-group publications.
+- Forming select publication list for CVs.
+
+* General approach
+
+We use InspireHEP's generated keys for essentially all entries.  Document editors may consult the generated BibTeX files described below (manually or with ~recibi~) or search InspireHEP's web page to learn what keys to use in the usual ~\cite{...}~.
+
+To resolve the citations and emit selective bibliography lists in the document a BibTeX file is generated and this file may be augmented/overridden with a hand-curated BibTeX file.  Entries in generated BibTeX files may be *tagged* by adding entries to the BibTeX ~keywords~ attribute.  Rules are then defined in the LaTeX file to perform a selection based on tags and other attribute values such as ~year~ and ~collaboration~.
+
+To create the generated BibTeX file, a number of intermediate files are generated and then merged.
+
+- From a number of hand-curated publication lists, the various ~arxiv:XXXX.YYYYY~ IDs are extracted and are used to query InspireHEP to generate the corresponding bibtex entries.  These are tagged with *edg*.
+
+- Each EDG member's InspireHEP ID (eg ~B.Viren.1~) is used to query InspireHEP to generate a BibTeX file and a member-specific tag is applied.
+
+The manually curated BibTeX file should follow these conventions:
+
+- Take from InspireHEP if at all possible.
+- O.w. use InspireHEP key name convention.
+- Add *edg* and EDG member tags.
+
+* Workflow
+
+Visit [[https://docs.google.com/document/d/1wnKtZ9j2as_6CMCfBrAP4Z11yKeVaIJXV5LsAXf_PIA/edit][EDG Publications by year]] and Download as Plain Text
+
+#+begin_example
+$ recibi parse -o edg.arxiv -m '(ar[Xx]iv:(\d+)\.(\d+))' EDG-Publications.txt
+$ recibi inspire -o -S 1000 edg.arxiv | recibi tag -o edg.bib -t edg
+#+end_example
+
+To generate a bib file of a single EDG member:
+
+#+begin_example
+$ recibi inspire -S 1000 author:B.Viren.1 | recibi tag -t bv -o bv.bib -
+#+end_example
+
+To merge bib files
+
+#+begin_example
+$ recibi merge -o edg+bv.bib edg.bib bv.bib
+#+end_example
+
+This command can be extended to cover a per-EDG-member bib file.
+
+* LaTeX
+
+In the LaTeX document there are two features used to bring this together.
+
+- Inclusion of multiple bib files with "first-one-wins" order.  This allows manually curated bib files to override the big generated file.
+- Use of ~keywords~ and 

@@ -1,0 +1,22 @@
+#+title: recibi - Reference Citation Bibliography
+
+This tool helps automate management of BibTeX files and interaction with InspireHEP web API.
+
+* Examples
+
+#+begin_example
+recibi inspire -o my.bib -S 1000 author:B.Viren.1
+recibi tag -t bv my.bib > mytagged.bib
+cat bv.bib | recibi filter -n 'year:>=2024' - > my2024.bib
+#+end_example
+
+More examples under [[file:examples/]].
+
+
+* Some features
+
+- Operate on files or stdout/stderr/pipe.
+- Arbitrary query to InspireHEP API.
+- Filter (select) entries based on numberical and regex matching on key or fields.
+- Add "tags" (BibTeX "keywords").
+  

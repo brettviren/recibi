@@ -1,0 +1,7 @@
+*~
+.envrc
+.direnv
+*.pyc
+__pycache__
+*.egg-info
+latexmk-out
