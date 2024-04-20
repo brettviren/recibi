@@ -5,3 +5,7 @@
 __pycache__
 *.egg-info
 latexmk-out
+
+*.bib
+*.pdf
+*.tex

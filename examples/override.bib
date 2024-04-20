@@ -1,0 +1,30 @@
+Caution: this should be left empty unless for emergency. 
+
+This file is loaded BEFORE generated.bib (in example.tex) and so any entries here will OVERRIDE any there.  Overriding will lead to a bibtex error "Repeated entry".
+
+If you feel you need to override an entry, it likely means that the generated.bib needs to be regenerated.  Do that instead.
+
+OTOH, if you need to provide a manually curated entry not provided by generated.bib then add it to curated.bib.
+
+
+If an override is provided in this file, it is responsibility of the human to assure it has all the proper keywords.
+
+
+With all that said, here is a contrived example to override an entry in the generated.bib file in order to add a keyword that is missing there.   In production, this lack of keyword would be fixed by re-running the workflow with, eg:
+
+  recibi tag -t bv -t edg -T collaboration -o out.bib in.bib
+
+Or via merge of individually tagged bib files.  See edg.org for more.
+
+@article{MicroBooNE:2024sec,
+    author = "Abratenko, P. and others",
+    collaboration = "MicroBooNE",
+    title = "{First double-differential cross section measurement of neutral-current $\pi^0$ production in neutrino-argon scattering in the MicroBooNE detector}",
+    eprint = "2404.10948",
+    archivePrefix = "arXiv",
+    primaryClass = "hep-ex",
+    reportNumber = "FERMILAB-PUB-24-0125",
+    month = "4",
+    year = "2024",
+    keywords = "bv,edg,microboone"
+}

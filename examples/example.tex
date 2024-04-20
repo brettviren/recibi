@@ -1,0 +1,28 @@
+\documentclass{article}
+\usepackage[backend=bibtex,defernumbers=true]{biblatex}
+
+\addbibresource{override.bib}
+\addbibresource{generated.bib}
+\addbibresource{curated.bib}
+
+\defbibfilter{bvoredg}{keyword=bv or keyword=edg}
+\defbibcheck{old}{\ifnumless{\thefield{year}}{2018}{}{\skipentry}}
+\defbibcheck{new}{\ifnumgreater{\thefield{year}}{2018}{}{\skipentry}}
+
+\begin{document}
+
+Here we use \verb|\nocite{*}| to cause all entries in the bib files to be available for listing.  In normal documents one would not do this and instead let the various \verb|\site{...}| calls determine the possible contents of bibliographies.
+
+\nocite{*}
+\printbibliography[keyword={bv},title={BV}]
+\printbibliography[keyword={edg},title={EDG}]
+\printbibliography[notkeyword={bv},title={NOT BV}]
+\printbibliography[notkeyword={edg},title={NOT EDG}]
+\printbibliography[keyword={bv},keyword={edg},title={BV AND EDG}]
+\printbibliography[filter=bvoredg,title={BV OR EDG}]
+\printbibliography[check=new,title={NEW}]
+\printbibliography[check=old,title={OLD}]
+
+\printbibliography[keyword={microboone},title={MicroBooNE}]
+\printbibliography[keyword={dayabay},title={Daya Bay}]
+\end{document}
