@@ -10,13 +10,13 @@ recibi tag -t bv my.bib > mytagged.bib
 cat bv.bib | recibi filter -n 'year:>=2024' - > my2024.bib
 #+end_example
 
-More examples under [[file:examples/]].
+More examples starting at [[file:examples/edg.org]].
 
 
 * Some features
 
 - Operate on files or stdout/stderr/pipe.
 - Arbitrary query to InspireHEP API.
-- Filter (select) entries based on numberical and regex matching on key or fields.
-- Add "tags" (BibTeX "keywords").
+- Filter (select) entries based on numerical and regex matching on key or fields.
+- Add "tags" (BibTeX "keywords" sets).
   
