@@ -1,64 +1,84 @@
 #+title: Using recibi in EDG
+#+options: ':t
 
 * Context
 
-For funding review reports, various selective bibliographies are wanted.  Given
-the large publication output from the group, manually performing these
-selections is labor intensive and error prone.  Some of the selection criteria
-include:
+Publications and documents such as reports for funding review require bibliographies that are narrowed to a selection of reference defined based on various criteria such as. 
 
-- Major contribute from a group member.
-- A given time period.
-- A specific collaboration.
-- General non-group publications.
-- Forming select publication list for CVs.
+- By group member author.
+- Published in a given time period.
+- Produced by a specific collaboration.
+- Is a of a general reference nature.
+- Forming a short, select list for CVs.
+
+The publications and other documents are often produced by many authors and the number of references produced by the group and otherwise referenced is large.  Thus some automated way to manage this variety and volume of references is desired.
 
 * General approach
 
-We use InspireHEP's generated keys for essentially all entries.  Document editors may consult the generated BibTeX files described below (manually or with ~recibi~) or search InspireHEP's web page to learn what keys to use in the usual ~\cite{...}~.
+The approach to managing references illustrated here is broken down into these major areas:
 
-To resolve the citations and emit selective bibliography lists in the document a BibTeX file is generated and this file may be augmented/overridden with a hand-curated BibTeX file.  Entries in generated BibTeX files may be *tagged* by adding entries to the BibTeX ~keywords~ attribute.  Rules are then defined in the LaTeX file to perform a selection based on tags and other attribute values such as ~year~ and ~collaboration~.
+1. Curation of an "official" group publication collection that providing references to publications for which any group member contributed.
 
-To create the generated BibTeX file, a number of intermediate files are generated and then merged.
+2. Curation of any "special" publication lists that associate a document for some purpose.
 
-- From a number of hand-curated publication lists, the various ~arxiv:XXXX.YYYYY~ IDs are extracted and are used to query InspireHEP to generate the corresponding bibtex entries.  These are tagged with *edg*.
+3. A parser of these publication lists that can extract document identifiers (/eg/ ~arXiv:XXXX.YYYYY~).
 
-- Each EDG member's InspireHEP ID (eg ~B.Viren.1~) is used to query InspireHEP to generate a BibTeX file and a member-specific tag is applied.
+4. A tool that can resolve document and author identifiers (/eg/ ~author:B.Viren.1~) to BibTeX database entries (/eg/ via calls to InspireHEP web API).
 
-The manually curated BibTeX file should follow these conventions:
+5. A tool to process BibTeX database entries with at least some keys operations (filter, tag, merge).
 
-- Take from InspireHEP if at all possible.
-- O.w. use InspireHEP key name convention.
-- Add *edg* and EDG member tags.
+6. A workflow that defines repeatable operations in terms of the above.
 
-* Workflow
+7. A mechanism to include human-curated BibTeX entries to provide references no available from the automated workflow.
 
-Visit [[https://docs.google.com/document/d/1wnKtZ9j2as_6CMCfBrAP4Z11yKeVaIJXV5LsAXf_PIA/edit][EDG Publications by year]] and Download as Plain Text
+8. A convention for BibTeX \texttt{keyword} set entries.
+
+9. $\LaTeX{}$ support for applying document-specific requirements using these generated or curated BibTeX database files.
+
+With these in place, the following tagged sets of references can be formed:
+
+- ~edg~ :: references identified from the [[https://docs.google.com/document/d/1wnKtZ9j2as_6CMCfBrAP4Z11yKeVaIJXV5LsAXf_PIA/edit][EDG Publications by year]] list.
+- ~snowmass~ :: references from the tab of this name in the .... spreadsheet.
+- ~collaboration~ :: a tag formed from the value of any ~collaboration~ field.
+- ~author~ :: a tag placed on all references from an ~author:XXX~ query.
+  
+These tagged sets may each be initially produced in one or more ~.bib~ files.
+These files can be combined with ~recibi merge~ into a single ~.bib~ file.  This
+merge operation is "deep" in that the final ~keywords~ set of a given entry is the
+union of all that are found for that entry.  A union is also formed over any disparate fields each entry of a given key.  Though when all entries for a given bib key are derived through InspireHEP they will be identical.
+
+Manually curated BibTeX database files (~.bib~) can be accommodated in two ways.  First, they may simply be added along with generated files in the $\LaTeX$.  In this manner all entries across all files are required to have unique keys and each should refer to a unique publication.  In particular, this method of aggregating bib files affords no way to override entries.
+
+The second approach is use ~recibi merge~ to merge generated and curated bib files to a single file.  This allows for the curated file to override or "patch" a generated file.  This approach also allows for effort to not be lost as the human may edit the curated file and the merge can be repeated.  Editing a generated file will typically ensure that human effort will be lost when the file is inevitably regenerated in order to incorporate updates to the upstream curated lists.
+
+* Example workflow
+
+This section outlines one possible workflow.  It is not meant to be definitive but to give a flavor of what is possible.  It starts with  
+visiting the [[https://docs.google.com/document/d/1wnKtZ9j2as_6CMCfBrAP4Z11yKeVaIJXV5LsAXf_PIA/edit][EDG Publications by year]] and selecting "Download as Plain Text" to produce the ~EDG-Publications.txt~ file which represents one upstream source.
 
 #+begin_example
 $ recibi parse -o edg.arxiv -m '(ar[Xx]iv:(\d+)\.(\d+))' EDG-Publications.txt
 $ recibi inspire -o -S 1000 edg.arxiv | \
   recibi tag -o edg.bib -t edg -T collaboration
 #+end_example
+This second step applies the ~edg~ tag and "transfers" the value of the ~collaboration~ field to the ~keywords~ set.
 
-To generate a bib file of a single EDG member:
+To generate a bib file holding references to documents for which a single EDG member contributed one must know an InspireHEP author identifier.  
 
 #+begin_example
 $ recibi inspire -S 1000 author:B.Viren.1 | \
   recibi tag -t bv -T collaboration -o bv.bib -
 #+end_example
+Like the prior example, this applies a tag ~bv~ to all and transfers the value of any ~collaboration~ field to the ~keywords~ set.
 
-To merge bib files
+To merge bib files.
 
 #+begin_example
 $ recibi merge -o edg+bv.bib edg.bib bv.bib
 #+end_example
+This command can be extended to any number of input bib files including those that are curated by human editing.
 
-This command can be extended to cover a per-EDG-member bib file.
+* LaTeX example
 
-* LaTeX
+See the file [[file:example.tex]] which uses two BibTeX files: [[file:generated.bib]] and [[file:curated.bib]].  These contrived and brief in order to show what can be done without getting lost in verbose listings.  The result of building the example is available as a [[file:example.pdf][PDF]] file.  See the text of the example for explanation details.
 
-In the LaTeX document there are two features used to bring this together.
-
-- Inclusion of multiple bib files with "first-one-wins" order.  This allows manually curated bib files to override the big generated file.
-- Use of ~keywords~ and 

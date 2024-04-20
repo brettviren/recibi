@@ -1,28 +1,167 @@
 \documentclass{article}
-\usepackage[backend=bibtex,defernumbers=true]{biblatex}
+\usepackage[margin=1.0in]{geometry}
+\usepackage[backend=bibtex,defernumbers,sortcites]{biblatex}
 
-\addbibresource{override.bib}
 \addbibresource{generated.bib}
 \addbibresource{curated.bib}
 
-\defbibfilter{bvoredg}{keyword=bv or keyword=edg}
-\defbibcheck{old}{\ifnumless{\thefield{year}}{2018}{}{\skipentry}}
-\defbibcheck{new}{\ifnumgreater{\thefield{year}}{2018}{}{\skipentry}}
-
 \begin{document}
 
-Here we use \verb|\nocite{*}| to cause all entries in the bib files to be available for listing.  In normal documents one would not do this and instead let the various \verb|\site{...}| calls determine the possible contents of bibliographies.
+\section{Introduction}
+
+This document illustrates how the \texttt{keywords} and other attributes in BibTeX entries may be used to produce bibliographies that are narrowed to a selection of a subset of citations.
+
+\subsection{Bib related document content}
+
+Each section below applies a citation selection criteria and gives some description as to its nature.  Nominally, the references across these sections would share a common numbering.  Here, the option to have per-section numbering is illustrated by wrapping each section in a \texttt{refsection} environment.  
+
+In each section, a single call to \verb|\nocite{*}| is used as a proxy for what normally is a number of calls to \verb|\cite{...}| in order to cite \textbf{all} entries in the bib database files.  Then, a single \verb|\printbibliography[...]| call is used in a section to illustrate one selection.  In a ``real'' document, each section (or chapter) may have multiple bibliographies, each with some unique section.  When selecting, care is needed so that all select bibliographies cover the total set of citations.
+
+\subsection{Selective bibliographies}
+
+A bib ``filter'' is used to perform a selection on the \texttt{keywords} set and a bib ``check'' to select on the \texttt{year} attribute.  These can be define anywhere (not just in the preamble).  In this example the following are used:
+
+\defbibfilter{bvoredg}{keyword=bv or keyword=edg}
+\defbibcheck{old}{\ifnumless{\thefield{year}}{2019}{}{\skipentry}}
+\defbibcheck{new}{\ifnumgreater{\thefield{year}}{2018}{}{\skipentry}}
+
+\begin{verbatim}
+\defbibfilter{bvoredg}{keyword=bv or keyword=edg}
+\defbibcheck{old}{\ifnumless{\thefield{year}}{2019}{}{\skipentry}}
+\defbibcheck{new}{\ifnumgreater{\thefield{year}}{2018}{}{\skipentry}}
+\end{verbatim}
+
+\subsection{The bib files}
+
+Two contrived bib files used here: \texttt{generated.bib} and \texttt{curated.bib}.  The first represents the output of an automated workflow that consists of running  \texttt{recibi} commands on an authoritative source of document identifiers associated with desired \texttt{keywords} tags.  The second represents the results of manual human editing efforts.
+
+The \texttt{generated.bib} file has three entries, one of which lacks the \texttt{edg} tag.  This omission represents an actual case at the time of developing this example where the \texttt{recibi} workflow encountered a publication that InsipreHEP has associated with an EDG member but which EDG has not yet put into the group's ``official'' list from which it is determined which entries get a \texttt{edg} tag.  This omission should \textbf{not} be fixed by editing \texttt{generated.bib} nor by adding the updated bib entry manually but by rerunning the \texttt{recibi} workflow.
+
+The \texttt{curated.bib} file has a single entry that represents a contrived case where \texttt{recibi} is unable to discover references.  In fact, it was discovered via a query to InsipreHEP using the EDG member's author ID.
+
+
+\begin{refsection}
+\section{ALL}
+
+This section illustrates no selection.  All entries in the bib files are cited with \verb|\nocite{*}| and no selection is made by \verb|\printbibliography|.
 
 \nocite{*}
-\printbibliography[keyword={bv},title={BV}]
-\printbibliography[keyword={edg},title={EDG}]
-\printbibliography[notkeyword={bv},title={NOT BV}]
-\printbibliography[notkeyword={edg},title={NOT EDG}]
-\printbibliography[keyword={bv},keyword={edg},title={BV AND EDG}]
-\printbibliography[filter=bvoredg,title={BV OR EDG}]
-\printbibliography[check=new,title={NEW}]
-\printbibliography[check=old,title={OLD}]
+\verb|\printbibliography[title={ALL}]|
+\printbibliography[title={ALL}]
+\end{refsection}
 
-\printbibliography[keyword={microboone},title={MicroBooNE}]
+
+\begin{refsection}
+\section{BV}
+
+This section illustrates selecting on one tag \texttt{bv} that was set by the \texttt{recibi} workflow as part of a query to InsipreHEP with an author ID.
+
+\nocite{*}
+\noindent \verb|\printbibliography[keyword={bv},title={BV}]|
+\printbibliography[keyword={bv},title={BV}]
+\end{refsection}
+
+
+\begin{refsection}
+\section{NOT BV}
+This section inverts the selection from the previous section.
+\nocite{*}
+\noindent \verb|\printbibliography[notkeyword={bv},title={NOT BV}]|
+\printbibliography[notkeyword={bv},title={NOT BV}]
+\end{refsection}
+
+
+\begin{refsection}
+\section{BV - select}
+In this section \verb|\nocite{*}| is not used and instead individual citations form the entries.  This is as may be used in a CV to populate the ``select publication'' list.
+
+\begin{verbatim}
+\nocite{MicroBooNE:2024sec}
+\nocite{DayaBay:2024nip}
+\printbibliography
+\end{verbatim}
+
+\nocite{MicroBooNE:2024sec}
+\nocite{DayaBay:2024nip}
+\printbibliography
+\end{refsection}
+
+
+\begin{refsection}
+\section{EDG}
+This section illustrates selecting on one tag \texttt{edg} that was set by the \texttt{recibi} workflow that derives document identifiers from ``official'' EDG lists of publications and queries InsipreHEP to transform the IDs to bib entries.
+
+\nocite{*}
+\noindent \verb|\printbibliography[keyword={edg},title={EDG}]|
+\printbibliography[keyword={edg},title={EDG}]
+\end{refsection}
+
+
+\begin{refsection}
+\section{NOT EDG}
+This section inverts the selection from the previous section.
+\nocite{*}
+\noindent \verb|\printbibliography[notkeyword={edg},title={NOT EDG}]|
+\printbibliography[notkeyword={edg},title={NOT EDG}]
+\end{refsection}
+
+
+\begin{refsection}
+\section{BV AND EDG}
+The selection of this section is the logical \texttt{AND} of two tags.
+
+\nocite{*}
+\noindent \verb|\printbibliography[keyword={bv},keyword={edg},title={BV AND EDG}]|
+\printbibliography[keyword={bv},keyword={edg},title={BV AND EDG}]
+\end{refsection}
+
+
+\begin{refsection}
+\section{BV OR EDG}
+The selection of this section is the logical \texttt{OR} of two tags.
+\nocite{*}
+\noindent \verb|\printbibliography[filter=bvoredg,title={BV OR EDG}]|
+\printbibliography[filter=bvoredg,title={BV OR EDG}]
+\end{refsection}
+
+
+\begin{refsection}
+\section{NEW}
+This section selects all entries with a \texttt{year} (strictly) less than 2019.
+\nocite{*}
+\noindent \verb|\printbibliography[check=new,title={NEW}]|
+\printbibliography[check=new,title={NEW}]
+\end{refsection}
+
+
+\begin{refsection}
+\section{OLD}
+This section selects all entries with a \texttt{year} (strictly) greater than 2018.
+\nocite{*}
+\noindent \verb|\printbibliography[check=old,title={OLD}]|
+\printbibliography[check=old,title={OLD}]
+\end{refsection}
+
+
+\begin{refsection}
+\section{Daya Bay}
+This section selects for entries with the tag \texttt{dayabay}.
+
+This tag was added as part of the \texttt{recibi} workflow by transferring the content of a \texttt{collaboration} field to a member of the \texttt{keywords} set.  In principle, a selection based directly on \texttt{collaboration}.  However, this field is not visible in the default bibtex ``data model'' and a solution for adding it at the \LaTeX{} level could not be found.  On the other hand, adding it via \texttt{recibi} workflow is trivial.  This does however mean any curated entries need care in adding a correct collaboration tag to the \texttt{keywords} for them to participate in such selections.
+
+\nocite{*}
+\noindent \verb|\printbibliography[keyword={dayabay},title={Daya Bay}]|
 \printbibliography[keyword={dayabay},title={Daya Bay}]
+\end{refsection}
 \end{document}
+
+
+\begin{refsection}
+\section{MicroBooNE}
+\nocite{*}
+The bib files contain no entries for MicroBooNE.  The bibliography should be empty.
+
+\noindent \verb|\printbibliography[keyword={microboone},title={MicroBooNE}]|
+\printbibliography[keyword={microboone},title={MicroBooNE}]
+\end{refsection}
+

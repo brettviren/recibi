@@ -9,3 +9,4 @@ latexmk-out
 *.bib
 *.pdf
 *.tex
+ltximg
