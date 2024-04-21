@@ -89,7 +89,7 @@ visiting the [[https://docs.google.com/document/d/1wnKtZ9j2as_6CMCfBrAP4Z11yKeVa
 
 #+begin_example
 $ recibi parse -o edg.arxiv -m '(ar[Xx]iv:(\d+)\.(\d+))' EDG-Publications.txt
-$ recibi inspire -o -S 1000 edg.arxiv | \
+$ recibi inspire -o -S 1000 -q edg.arxiv | \
   recibi tag -o edg.bib -t edg -T collaboration
 #+end_example
 This second step applies the ~edg~ tag and "transfers" the value of the ~collaboration~ field to the ~keywords~ set.

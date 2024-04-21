@@ -6,11 +6,11 @@ Client interface to InspireHEP web API.
 # Note, pyinspirehep exists but I can't make it do quite what I want so we just
 # DIY a barebones client.
 
+from urllib.request import Request, urlopen
+
 api_url = 'https://inspirehep.net/api'
 # https://inspirehep.net/api/{identifier-type}/{identifier-value}
 
-import urllib
-from urllib.request import Request, urlopen
 
 def form_params(joiner=" or ", **params):
     '''
@@ -24,8 +24,8 @@ def form_params(joiner=" or ", **params):
     if not params:
         return ""
     parts = list()
-    for k,v in params.items():
-        if isinstance(v, (list,tuple)):
+    for k, v in params.items():
+        if isinstance(v, (list, tuple)):
             v = joiner.join(v)
         v = v.strip().replace(" ", "%20")
         parts.append(f'{k}={v}')
@@ -57,6 +57,8 @@ def get(url):
     if res.getcode() == 200:
         return res.read().decode()
     raise IOError(f'HTTP GET error {res.getcode()} for {url}')
+
+
 
 # req = Request('https://inspirehep.net/api/literature?sort=mostrecent&q=arxiv:2404.01687%20or%20arxiv:2402.05383')
 # req.add_header('Accept','application/x-bibtex')

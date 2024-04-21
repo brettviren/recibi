@@ -1,0 +1,84 @@
+#!/usr/bin/env -S snakemake --jobs 1 --snakefile
+
+# only 1 job to provide a natural rate limit to hitting InspireHEP.
+
+# This workflow builds an EDG bib file for the 2024 review.
+#
+# This needs the "recibi" command.
+
+import os
+HOME = os.environ['HOME']
+
+for k,v in dict(
+        # Download Plain Text
+        publications=HOME+"/Downloads/EDG-Publications.txt",
+        # Download Tab Separated 
+        snowmass=HOME+'/Downloads/2024 Lab Comparative Review - SNOWMASS contribution List.tsv',
+        # This gets made by hand.  <Inspire.Hep.ID> <shortname>
+        members=HOME+'/Downloads/EDG-Members.txt',
+).items():
+    config.setdefault(k,v)
+
+
+rule snowmass_query:
+    input:
+        config['snowmass']
+    output:
+        "snowmass-arxiv.lst"
+    shell: '''
+    cut -f2 < "{input}" | tail +2 |grep -v '^$' | grep -v 'OSTI' | sed -e 's/^/arxiv:/' > "{output}"
+    '''
+    
+rule edgpub_arxiv:
+    input:
+        config['publications']
+    output:
+        "edgpub-arxiv.lst"
+    shell: '''
+    recibi parse -o {output} -m '(ar[Xx]iv:(\d+)\.(\d+))' {input}
+    '''
+
+# Pre make per-author query file content so we know what expload_members will
+# output.  
+member_author_files = dict()
+member_bib_files = list()
+for line in open(config['members']).readlines():
+    line = line.strip()
+    if not line or line.startswith("#"):
+        continue
+    ident, short = line.split(" ")
+    member_author_files[f'{short}-arxiv.lst'] = f'author:{ident}'
+    member_bib_files.append(f'tagged-{short}.bib')
+
+rule expload_members:
+    input:
+        ancient(config['members'])
+    output:
+        member_author_files.keys()
+    run:
+        for fn, ident in member_author_files.items():
+            open(fn,"w").write(ident + '\n')
+            
+rule expload_members_all:
+    input:
+        member_author_files.keys()
+
+
+rule query_inspire:
+    input:
+        '{tag}-arxiv.lst'
+    output:
+        'tagged-{tag}.bib'
+    shell: '''
+    recibi inspire -S 1000 -q {input} | recibi tag -t {wildcards.tag} -T collaboration -o {output} -
+    '''
+
+rule merge_bibs:    
+    input:
+        member_bib_files, 'tagged-edgpub.bib', 'tagged-snowmass.bib'
+    output:
+        'generated.bib'
+    shell: '''
+    recibi merge -o {output} {input}
+    '''
+    

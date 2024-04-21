@@ -136,7 +136,7 @@ def tag(output, tag, transfer, bibfiles):
 
         return (key, entry)
 
-    dump(load(bibfiles, mutate=add_tag), output);
+    dump(load(bibfiles, mutate=add_tag), output)
 
 @cli.command("inspire")
 @click.option("-o", "--output", default="/dev/stdout",
@@ -153,10 +153,12 @@ def tag(output, tag, transfer, bibfiles):
               help="Set the sort order for search results, this is identifier-type-specific")
 @click.option("-S", "--size", default=10,
               help="Set number of search results, max is 1000")
+@click.option("-P", "--page", default=1,
+              help="Set page of search results, default is 1")
 @click.option("--query-join", default="or",
               help="Set the Boolean operator for joining multiple args to the q= search queries")
 @click.argument("query", nargs=-1)
-def inspire(output, type, value, format, queries, sort, size, query_join, query):
+def inspire(output, type, value, format, queries, sort, size, page, query_join, query):
     '''
     Access InspireHEP web API.
 
@@ -192,11 +194,44 @@ def inspire(output, type, value, format, queries, sort, size, query_join, query)
     if size > 1000:
         size = 1000
 
-    params = api.form_params(q=query, sort=sort, size=str(size), format=format)
+    params = api.form_params(q=query, sort=sort,
+                             size=str(size), page=str(page), format=format)
     url = api.form_url(type, value, params)
     text = api.get(url)
     with open(output,"w") as out:
         out.write(text)
+
+@cli.command("search")
+@click.option("-o", "--output", default="/dev/stdout",
+              help='Output file')
+@click.option("-s", "--search", multiple=True,
+              help="Search terms like field=regex")
+@click.argument("bibfiles", nargs=-1)
+def search(output, search, bibfiles):
+    '''
+    Search a bib file for matching entries.
+
+    Search terms are in form 'field:regex' where the special field "key" may be
+    used to match the entry key.  All search terms given must match for an entry
+    to be emitted.
+    '''
+    terms = [(field, re.compile(regex, re.IGNORECASE))
+             for field, regex in map(lambda s: s.split("=", 1), search)]
+
+    def findit(key, entry):
+
+        # must run the gauntlet 
+        for field, regex in terms:
+            if field == 'key':
+                if re.match(regex, key):
+                    continue
+            elif field in entry.fields:
+                if re.search(regex, entry.fields[field]):
+                    continue
+            return              # entry has no field
+
+        return (key, entry)
+    dump(load(bibfiles, mutate=findit), output)
 
 
 def main():

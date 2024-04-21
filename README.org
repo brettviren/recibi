@@ -8,6 +8,8 @@ This tool helps automate management of BibTeX files and interaction with Inspire
 recibi inspire -o my.bib -S 1000 author:B.Viren.1
 recibi tag -t bv my.bib > mytagged.bib
 cat bv.bib | recibi filter -n 'year:>=2024' - > my2024.bib
+recibi merge -o giant.bib authors-*.bib experiments-*.bib
+recibi search -s title='nucleon decay' -s keywords=viren giant.bib
 #+end_example
 
 More examples starting at [[file:examples/edg.org]].
