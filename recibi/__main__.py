@@ -49,7 +49,7 @@ def parse_for_arxiv(output, match, text):
 @click.argument('bibfiles', nargs=-1, type=click.Path())
 def merge(output, bibfiles):
     '''
-    Merge bibfiles.
+    Merge bibliography files.
     '''
     dump(load(bibfiles, merge=merge_patch), output)
 

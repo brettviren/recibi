@@ -2,6 +2,9 @@
 \usepackage[margin=1.0in]{geometry}
 \usepackage[backend=bibtex,defernumbers,sortcites]{biblatex}
 
+\newenvironment{cvpubs}{\begin{refsection}}{\printbibliography\end{refsection}}
+\newcommand{\cvpub}[1]{\nocite{#1}}
+
 \addbibresource{generated.bib}
 \addbibresource{curated.bib}
 
@@ -16,6 +19,14 @@ This document illustrates how the \texttt{keywords} and other attributes in BibT
 Each section below applies a citation selection criteria and gives some description as to its nature.  Nominally, the references across these sections would share a common numbering.  Here, the option to have per-section numbering is illustrated by wrapping each section in a \texttt{refsection} environment.  
 
 In each section, a single call to \verb|\nocite{*}| is used as a proxy for what normally is a number of calls to \verb|\cite{...}| in order to cite \textbf{all} entries in the bib database files.  Then, a single \verb|\printbibliography[...]| call is used in a section to illustrate one selection.  In a ``real'' document, each section (or chapter) may have multiple bibliographies, each with some unique section.  When selecting, care is needed so that all select bibliographies cover the total set of citations.
+
+\subsubsection{Example CV Pub List}
+
+\begin{cvpubs}
+  \cvpub{Viren:2000kp}
+  \cvpub{DayaBay:2024nip}
+  \cvpub{MicroBooNE:2024sec}
+\end{cvpubs}
 
 \subsection{Selective bibliographies}
 

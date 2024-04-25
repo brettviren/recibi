@@ -1,4 +1,6 @@
 #!/usr/bin/env -S snakemake --jobs 1 --snakefile
+# -*- snakemake -*-
+
 
 # only 1 job to provide a natural rate limit to hitting InspireHEP.
 
@@ -75,7 +77,7 @@ rule query_inspire:
 
 rule merge_bibs:    
     input:
-        member_bib_files, 'tagged-edgpub.bib', 'tagged-snowmass.bib'
+        'tagged-edgpub.bib', 'tagged-snowmass.bib'
     output:
         'generated.bib'
     shell: '''
