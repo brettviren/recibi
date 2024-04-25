@@ -10,15 +10,45 @@ import os
 HOME = os.environ['HOME']
 
 for k,v in dict(
-        # Download Plain Text
-        publications=HOME+"/Downloads/EDG-Publications.txt",
+        base = HOME + "/sync/docs/doe/2024-comp-rev/overleaf",
         # Download Tab Separated 
         snowmass=HOME+'/Downloads/2024 Lab Comparative Review - SNOWMASS contribution List.tsv',
         # This gets made by hand.  <Inspire.Hep.ID> <shortname>
-        members=HOME+'/Downloads/EDG-Members.txt',
+        # members=HOME+'/Downloads/EDG-Members.txt',
 ).items():
     config.setdefault(k,v)
 
+
+# for now, "touch" the .url to reget
+
+base = config['base']
+
+rule get_edgpub:
+    input:
+        base + "/recibi/EDG-Publications.url"
+    output:
+        "EDG-Publications.html"
+    shell: '''
+    curl $(cat {input}) > {output}
+    '''
+
+rule convert_edgpub:
+    input:
+        rules.get_edgpub.output
+    output:
+        "EDG-Publications.txt"
+    shell: '''
+    html2text {input} > {output}
+    '''
+    
+rule edgpub_arxiv:
+    input:
+        rules.convert_edgpub.output
+    output:
+        "edgpub-arxiv.lst"
+    shell: '''
+    recibi parse -o {output} -m '(ar[Xx]iv:(\d+)\.(\d+))' {input}
+    '''
 
 rule snowmass_query:
     input:
@@ -28,54 +58,54 @@ rule snowmass_query:
     shell: '''
     cut -f2 < "{input}" | tail +2 |grep -v '^$' | grep -v 'OSTI' | sed -e 's/^/arxiv:/' > "{output}"
     '''
-    
-rule edgpub_arxiv:
-    input:
-        config['publications']
-    output:
-        "edgpub-arxiv.lst"
-    shell: '''
-    recibi parse -o {output} -m '(ar[Xx]iv:(\d+)\.(\d+))' {input}
-    '''
 
 # Pre make per-author query file content so we know what expload_members will
 # output.  
-member_author_files = dict()
-member_bib_files = list()
-for line in open(config['members']).readlines():
-    line = line.strip()
-    if not line or line.startswith("#"):
-        continue
-    ident, short = line.split(" ")
-    member_author_files[f'{short}-arxiv.lst'] = f'author:{ident}'
-    member_bib_files.append(f'tagged-{short}.bib')
+# member_author_files = dict()
+# member_bib_files = list()
+# for line in open(config['members']).readlines():
+#     line = line.strip()
+#     if not line or line.startswith("#"):
+#         continue
+#     ident, short = line.split(" ")
+#     member_author_files[f'{short}-arxiv.lst'] = f'author:{ident}'
+#     member_bib_files.append(f'tagged-{short}.bib')
 
-rule expload_members:
-    input:
-        ancient(config['members'])
-    output:
-        member_author_files.keys()
-    run:
-        for fn, ident in member_author_files.items():
-            open(fn,"w").write(ident + '\n')
+# rule expload_members:
+#     input:
+#         ancient(config['members'])
+#     output:
+#         member_author_files.keys()
+#     run:
+#         for fn, ident in member_author_files.items():
+#             open(fn,"w").write(ident + '\n')
             
-rule expload_members_all:
-    input:
-        member_author_files.keys()
+# rule expload_members_all:
+#     input:
+#         member_author_files.keys()
 
 
 rule query_inspire:
     input:
         '{tag}-arxiv.lst'
     output:
+        '{tag}-arxiv.bib'
+    shell: '''
+    recibi inspire -o {output} -S 1000 -q {input}
+    '''
+
+rule tag:
+    input:
+        '{tag}-arxiv.bib'
+    output:
         'tagged-{tag}.bib'
     shell: '''
-    recibi inspire -S 1000 -q {input} | recibi tag -t {wildcards.tag} -T collaboration -o {output} -
+    recibi tag -t {wildcards.tag} -T collaboration -o {output} {input}
     '''
 
 rule merge_bibs:    
     input:
-        member_bib_files, 'tagged-edgpub.bib', 'tagged-snowmass.bib'
+        'tagged-edgpub.bib', 'tagged-snowmass.bib', base + "/patch.bib"
     output:
         'generated.bib'
     shell: '''
