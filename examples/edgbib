@@ -1,4 +1,6 @@
 #!/usr/bin/env -S snakemake --jobs 1 --snakefile
+# -*- snakemake -*-
+
 
 # only 1 job to provide a natural rate limit to hitting InspireHEP.
 
@@ -11,8 +13,6 @@ HOME = os.environ['HOME']
 
 for k,v in dict(
         base = HOME + "/sync/docs/doe/2024-comp-rev/overleaf",
-        # Download Tab Separated 
-        snowmass=HOME+'/Downloads/2024 Lab Comparative Review - SNOWMASS contribution List.tsv',
         # This gets made by hand.  <Inspire.Hep.ID> <shortname>
         # members=HOME+'/Downloads/EDG-Members.txt',
 ).items():
@@ -22,6 +22,25 @@ for k,v in dict(
 # for now, "touch" the .url to reget
 
 base = config['base']
+
+rule get_snowmass:
+    input:
+        base + "/recibi/Snowmass.url"
+    output:
+        "Snowmass.txt"
+    shell: '''
+    curl -L $(cat {input}) > {output}
+    '''
+        
+rule snowmass_query:
+    input:
+        rules.get_snowmass.output
+    output:
+        "snowmass-arxiv.lst"
+    shell: '''
+    cut -f2 < "{input}" | tail +2 |grep -v '^$' | grep -v 'OSTI' | sed -e 's/^/arxiv:/' > "{output}"
+    '''
+
 
 rule get_edgpub:
     input:
@@ -50,14 +69,6 @@ rule edgpub_arxiv:
     recibi parse -o {output} -m '(ar[Xx]iv:(\d+)\.(\d+))' {input}
     '''
 
-rule snowmass_query:
-    input:
-        config['snowmass']
-    output:
-        "snowmass-arxiv.lst"
-    shell: '''
-    cut -f2 < "{input}" | tail +2 |grep -v '^$' | grep -v 'OSTI' | sed -e 's/^/arxiv:/' > "{output}"
-    '''
 
 # Pre make per-author query file content so we know what expload_members will
 # output.  
@@ -112,3 +123,15 @@ rule merge_bibs:
     recibi merge -o {output} {input}
     '''
     
+rule install:
+    input:
+        rules.merge_bibs.output
+    output:
+        base + '/generated.bib'
+    shell: '''
+        cp {input} {output}
+    '''
+
+rule all:
+    input:
+        rules.install.output

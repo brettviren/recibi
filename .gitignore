@@ -10,3 +10,4 @@ latexmk-out
 *.pdf
 *.tex
 ltximg
+output

@@ -50,6 +50,8 @@ def replace_unicode(item):
         "\u202f": "",
         "\u2009\u2009": " ",
         "−": "-",
+        "∓": "-/+",
+        "±": "+/-",
         "∗": "*",
         "Λ": r"\Lambda",
     }
@@ -69,6 +71,15 @@ def clean_entry(entry):
         entry.fields[key] = replace_unicode(val)
     return entry
 
+
+def sort(bib):
+    out = BibliographyData()
+    entries = list(bib.entries.items())
+    entries.sort()
+    out.add_entries(entries)
+    # for key, entry in entries:
+    #     out.add_entry(key, entry)
+    return out
 
 def load(bibfiles=None, mutate=None, merge=None):
     '''

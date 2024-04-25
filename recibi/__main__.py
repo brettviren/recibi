@@ -4,7 +4,7 @@ import re
 import click
 
 from recibi.matching import string_match, number_match
-from recibi.bib import load, dump, merge_patch
+from recibi.bib import load, dump, sort, merge_patch
 import recibi.inspire as api
 import logging
 logging.basicConfig(filename='/dev/stderr', level=logging.INFO)
@@ -49,9 +49,9 @@ def parse_for_arxiv(output, match, text):
 @click.argument('bibfiles', nargs=-1, type=click.Path())
 def merge(output, bibfiles):
     '''
-    Merge bibfiles.
+    Merge bibliography files.
     '''
-    dump(load(bibfiles, merge=merge_patch), output)
+    dump(sort(load(bibfiles, merge=merge_patch)), output)
 
 
 @cli.command("filter")
@@ -157,8 +157,10 @@ def tag(output, tag, transfer, bibfiles):
               help="Set page of search results, default is 1")
 @click.option("--query-join", default="or",
               help="Set the Boolean operator for joining multiple args to the q= search queries")
+@click.option("--maxn", default=10,
+              help="Max number of search queries per GET")
 @click.argument("query", nargs=-1)
-def inspire(output, type, value, format, queries, sort, size, page, query_join, query):
+def inspire(output, type, value, format, queries, sort, size, page, query_join, maxn, query):
     '''
     Access InspireHEP web API.
 
@@ -184,6 +186,10 @@ def inspire(output, type, value, format, queries, sort, size, page, query_join, 
         queries.append("/dev/stdin")
         query.remove("-")
 
+    if size > 1000:
+        size = 1000
+
+
     for one in queries:
         for line in open(one).readlines():
             line = line.strip()
@@ -191,15 +197,20 @@ def inspire(output, type, value, format, queries, sort, size, page, query_join, 
                 continue
             query.append(line)
 
-    if size > 1000:
-        size = 1000
+    # unique and well ordered
+    query = list(set(query))
+    query.sort()
 
-    params = api.form_params(q=query, sort=sort,
-                             size=str(size), page=str(page), format=format)
-    url = api.form_url(type, value, params)
-    text = api.get(url)
+    chunks = list()
+    for group in [query[x:x+maxn] for x in range(0, len(query), maxn)]:
+        params = api.form_params(q=group, sort=sort,
+                                 size=str(size), page=str(page), format=format)
+        url = api.form_url(type, value, params)
+        text = api.get(url)
+        chunks.append(text)
+
     with open(output,"w") as out:
-        out.write(text)
+        out.write('\n'.join(chunks))
 
 @cli.command("search")
 @click.option("-o", "--output", default="/dev/stdout",

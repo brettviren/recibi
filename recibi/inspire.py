@@ -6,6 +6,8 @@ Client interface to InspireHEP web API.
 # Note, pyinspirehep exists but I can't make it do quite what I want so we just
 # DIY a barebones client.
 
+import sys
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 api_url = 'https://inspirehep.net/api'
@@ -53,7 +55,11 @@ def get(url):
     req = Request(url)
     # if fmt == 'bibtex':
     #     req.add_header('Accept','application/x-bibtex')
-    res = urlopen(req)
+    try:
+        res = urlopen(req)
+    except HTTPError as err:
+        sys.stderr.write(f'bad URL: {url}\n')
+        raise
     if res.getcode() == 200:
         return res.read().decode()
     raise IOError(f'HTTP GET error {res.getcode()} for {url}')
