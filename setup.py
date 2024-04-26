@@ -17,6 +17,7 @@ setuptools.setup(
     install_requires=[
         "click",
         "pybtex",
+        "snakemake",
     ],
     entry_points = dict(
         console_scripts = [

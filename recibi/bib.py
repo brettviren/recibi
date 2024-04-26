@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 
 import re
+import csv
+import hashlib
 from .util import listify
 from pybtex.database.input import bibtex
 from pybtex.database import Entry, BibliographyData, parse_string
+from dateutil.parser import parse as parse_date
 
 import logging
 logger = logging.getLogger("recibi")
+warn = logger.warn
 info = logger.info
 debug = logger.debug
 
@@ -80,6 +84,69 @@ def sort(bib):
     # for key, entry in entries:
     #     out.add_entry(key, entry)
     return out
+
+
+def hash_entry(entry, fields=('author','title','year','note','organization','collaboration')):
+    '''
+    Return a hash of entry formed with letters.
+    '''
+    h = hashlib.sha1()
+    for field in fields:
+        string = entry.fields.get(field, field)
+        h.update(string.encode())
+    d = h.digest()
+    s = ""
+    for i in range(0,4):
+        x = d[i] % 52
+        if x >= 26:
+            s += chr(ord('A') + x - 26)
+        else:
+            s += chr(ord('a') + x)
+    return s
+
+
+def generate_key(entry):
+    last = entry.fields['author'].split(',')[0].strip().split(' ')[-1]
+    year = entry.fields['year']
+    rnd = hash_entry(entry)[:3]  # mimic InspireHEP
+    return f'{last}:{year}{rnd}'
+
+
+def clean_cell(col, cell):
+    cell = replace_unicode(cell)
+    if col == 'year':
+        return str(parse_date(cell.replace('.',' ')).year)
+    if col == 'author':
+        return cell.replace(',', ' and ')
+    return cell
+
+
+def trans(infiles, columns, kind, delim='\t', skip=0):
+    '''
+    Load infiles as delim-separated values and return bibs.
+    '''
+    # inspired by d.jaffe's gglcsvtobibtex.py 
+    entries = dict()
+    for infile in infiles:
+        rows = list(csv.reader(open(infile), delimiter=delim))
+        for row in rows[skip:]:
+            if not row or not row[0]:
+                continue
+            entry = Entry(kind)
+            for col,cell in zip(columns, row):
+                if not col:
+                    continue
+                entry.fields[col] = clean_cell(col, cell)
+            key = generate_key(entry)
+            if key in entries:
+                warn(f'duplicate key "{key}", skipping: {entry}')
+                continue
+            entries[key] = entry
+    out = BibliographyData()
+    for key, entry in entries.items():
+        out.add_entry(key, entry)
+    return out
+
 
 def load(bibfiles=None, mutate=None, merge=None):
     '''

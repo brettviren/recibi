@@ -1,12 +1,29 @@
 #!/usr/bin/env -S snakemake --jobs 1 --snakefile
 # -*- snakemake -*-
 
+# Example running:
+#
+# ./edgbib --directory=tmp
+# ./edgbib --directory=tmp install
+#
+# To force rerun with a re-get of a source.
+#
+# ./edgbib --directory=tmp -R get_talks install
+#
+# Configuration
+#
+# ./edbbib --config base=/path/to/overleaf/repo [...]
+# cd /path/to/overleaf/repo
+# git commit -am "..."
+# git push
 
-# only 1 job to provide a natural rate limit to hitting InspireHEP.
+# This intentionally/dumbly turns off all parallelism to provide a natural rate
+# limit to hitting InspireHEP.
 
 # This workflow builds an EDG bib file for the 2024 review.
 #
 # This needs the "recibi" command.
+
 
 import os
 HOME = os.environ['HOME']
@@ -19,9 +36,27 @@ for k,v in dict(
     config.setdefault(k,v)
 
 
-# for now, "touch" the .url to reget
-
 base = config['base']
+
+rule get_talks:
+    input:
+        base + "/recibi/Talks.url"
+    output:
+        "Talks.txt"
+    shell: '''
+        curl -L $(cat {input}) > {output}
+    '''
+
+rule talks_to_bib:
+    input:
+        rules.get_talks.output
+    output:
+        "talks.bib"
+    params:
+        script = base + "/recibi/gglcsvtobibtex.py"
+    shell: '''
+    recibi csv -d, {input} | recibi tag -t talk -T collaboration -o {output} 
+    '''
 
 rule get_snowmass:
     input:
@@ -57,7 +92,7 @@ rule convert_edgpub:
     output:
         "EDG-Publications.txt"
     shell: '''
-    html2text {input} > {output}
+    html2text -width 9999 {input} > {output}
     '''
     
 rule edgpub_arxiv:
@@ -116,7 +151,7 @@ rule tag:
 
 rule merge_bibs:    
     input:
-        'tagged-edgpub.bib', 'tagged-snowmass.bib', base + "/patch.bib"
+        'tagged-edgpub.bib', 'tagged-snowmass.bib', base + "/patch.bib", "talks.bib"
     output:
         'generated.bib'
     shell: '''
@@ -134,4 +169,5 @@ rule install:
 
 rule all:
     input:
-        rules.install.output
+        rules.merge_bibs.output
+    default_target: True

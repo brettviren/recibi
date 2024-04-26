@@ -4,7 +4,7 @@ import re
 import click
 
 from recibi.matching import string_match, number_match
-from recibi.bib import load, dump, sort, merge_patch
+from recibi.bib import load, dump, sort, trans, merge_patch
 import recibi.inspire as api
 import logging
 logging.basicConfig(filename='/dev/stderr', level=logging.INFO)
@@ -41,6 +41,28 @@ def parse_for_arxiv(output, match, text):
             for one in re.findall(pat, text):
                 if one:
                     out.write(one[0] + "\n")
+
+
+@cli.command("csv")
+@click.option("-d", "--delim", default=",",
+              help='The column delimiter (eg "," for CSV, "\t" for TSV')
+@click.option("-c", "--columns", default='title,collaboration,organization,note,author,year',
+              help="Comma-separated list of bibtex attributes in order of columns")
+@click.option("-s", "--skip", default=1,
+              help="Number of leading rows to skip")
+@click.option("-k", "--kind", default="conference",
+              help="The kind of BibTeX entry")
+@click.option("-o", "--output", default="/dev/stdout",
+              help="Output file")
+@click.argument('textfiles', nargs=-1)
+def csv(delim, columns, skip, kind, output, textfiles):
+    '''
+    Transform a columnar file to bib entries.
+    '''
+    if delim.lower() == 'tab':
+        delim = '\t'
+    columns = columns.split(",")
+    dump(sort(trans(textfiles, columns, kind, delim, skip)), output)
 
 
 @cli.command("merge")
