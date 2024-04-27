@@ -5,12 +5,16 @@ import click
 
 from recibi.matching import string_match, number_match
 from recibi.bib import load, dump, sort, trans, merge_patch
-import recibi.inspire as api
+import recibi.inspire as inspire_api
+import recibi.osti as osti_api
+from recibi import apis
 import logging
 logging.basicConfig(filename='/dev/stderr', level=logging.INFO)
 logger = logging.getLogger("recibi")
+warn = logger.warn
 info = logger.info
 debug = logger.debug
+
 
 @click.group()
 def cli():
@@ -160,6 +164,54 @@ def tag(output, tag, transfer, bibfiles):
 
     dump(load(bibfiles, mutate=add_tag), output)
 
+
+@cli.command("osti")
+@click.option("-o", "--output", default="/dev/stdout",
+              help="Output file")
+@click.option("-F", "--format", default="bibtex",
+              type=click.Choice(["bibtex", "json", "xml"]),
+              help="Set the format for the output")
+@click.argument("query", nargs=-1)
+def cmd_osti(output, format, query):
+    '''
+    Query DOE OSTI API endpoint /records.
+
+    Any term shown in the docs may be used:
+
+    https://www.osti.gov/api/v1/docs
+
+    Terms are given as:
+
+        <param>=<value>
+        <idtype>:<idvalue>
+        <osti_id_number>
+
+    The supported <idtype> is either doi or osti_id.
+    '''
+    queries = dict()
+    for q in query:
+        if '=' in q:
+            q = q.split('=', 1)
+        elif ':' in q:
+            q = q.split(':', 1)
+        if isinstance(q, str):
+            queries['osti_id'] = q
+            continue
+        key = q[0].lower()
+        val = q[1]
+        if key == 'osti':
+            key = 'osti_id'
+        if key == 'arxiv':
+            warn(f'OSTI API does not support arXiv IDs, skipping {val}')
+            continue
+        queries[q[0]] = q[1]
+
+    url = osti_api.form_url(**queries)
+    info(url)
+    text = osti_api.get(url, format)
+    with open(output, "w") as out:
+        out.write(text + "\n")
+
 @cli.command("inspire")
 @click.option("-o", "--output", default="/dev/stdout",
               help="Output file")
@@ -167,27 +219,31 @@ def tag(output, tag, transfer, bibfiles):
               help="Set the 'identifier-type' URL location")
 @click.option("-V", "--value", default=None,
               help="Set the 'identifier-value' URL location (optional)")
-@click.option("-F", "--format", default="bibtex", type=click.Choice(["bibtex","json"]),
+@click.option("-F", "--format", default="bibtex",
+              type=click.Choice(["bibtex", "json"]),
               help="Set the format for the output")
 @click.option("-q", "--queries", type=click.Path(), multiple=True,
               help="Give a file with q= search terms, one per line")
 @click.option("-s", "--sort", default="mostrecent",
-              help="Set the sort order for search results, this is identifier-type-specific")
+              help="Set the sort order for search results, "
+              "this is identifier-type-specific")
 @click.option("-S", "--size", default=10,
               help="Set number of search results, max is 1000")
 @click.option("-P", "--page", default=1,
               help="Set page of search results, default is 1")
 @click.option("--query-join", default="or",
-              help="Set the Boolean operator for joining multiple args to the q= search queries")
+              help="Set the Boolean operator for joining multiple "
+              "args to the q= search queries")
 @click.option("--maxn", default=10,
               help="Max number of search queries per GET")
 @click.argument("query", nargs=-1)
-def inspire(output, type, value, format, queries, sort, size, page, query_join, maxn, query):
+def inspire(output, type, value, format, queries, sort, size, page,
+            query_join, maxn, query):
     '''
     Access InspireHEP web API.
 
     See eg. https://github.com/inspirehep/rest-api-doc
-    
+
     Example:
 
         recibi inspire arxiv:2404.01687 arxiv:2402.05383
@@ -195,7 +251,8 @@ def inspire(output, type, value, format, queries, sort, size, page, query_join, 
     A query term of "-" that is given as a command argument is interpreted to
     read stdin as if it were a file of query terms.
 
-    Default format is bibtex however some identifier-types will return JSON regardless.
+    Default format is bibtex however some identifier-types will return JSON
+    regardless.
 
     Pagination is not supported.
 
@@ -211,7 +268,6 @@ def inspire(output, type, value, format, queries, sort, size, page, query_join, 
     if size > 1000:
         size = 1000
 
-
     for one in queries:
         for line in open(one).readlines():
             line = line.strip()
@@ -225,13 +281,13 @@ def inspire(output, type, value, format, queries, sort, size, page, query_join, 
 
     chunks = list()
     for group in [query[x:x+maxn] for x in range(0, len(query), maxn)]:
-        params = api.form_params(q=group, sort=sort,
-                                 size=str(size), page=str(page), format=format)
-        url = api.form_url(type, value, params)
-        text = api.get(url)
+        params = inspire_api.form_params(
+            q=group, sort=sort, size=str(size), page=str(page), format=format)
+        url = inspire_api.form_url(type, value, params)
+        text = apis.get(url)
         chunks.append(text)
 
-    with open(output,"w") as out:
+    with open(output, "w") as out:
         out.write('\n'.join(chunks))
 
 @cli.command("search")

@@ -17,10 +17,11 @@ setuptools.setup(
     install_requires=[
         "click",
         "pybtex",
+        "python-dateutil",
         "snakemake",
     ],
-    entry_points = dict(
-        console_scripts = [
+    entry_points=dict(
+        console_scripts=[
             'recibi = recibi.__main__:main',
         ]
     ),

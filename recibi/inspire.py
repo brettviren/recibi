@@ -6,9 +6,7 @@ Client interface to InspireHEP web API.
 # Note, pyinspirehep exists but I can't make it do quite what I want so we just
 # DIY a barebones client.
 
-import sys
-from urllib.error import HTTPError
-from urllib.request import Request, urlopen
+from recibi import apis
 
 api_url = 'https://inspirehep.net/api'
 # https://inspirehep.net/api/{identifier-type}/{identifier-value}
@@ -23,15 +21,7 @@ def form_params(joiner=" or ", **params):
 
     Spaces are url-encoded
     '''
-    if not params:
-        return ""
-    parts = list()
-    for k, v in params.items():
-        if isinstance(v, (list, tuple)):
-            v = joiner.join(v)
-        v = v.strip().replace(" ", "%20")
-        parts.append(f'{k}={v}')
-    return "&".join(parts)
+    return apis.form_params(joiner, **params)
 
 
 def form_url(identifier_type="literature", identifier_value=None, params=""):
@@ -45,26 +35,6 @@ def form_url(identifier_type="literature", identifier_value=None, params=""):
         url += "?" + params
 
     return url
-
-
-def get(url):
-    '''
-    Perform HTTP GET on url and return text.
-    '''
-
-    req = Request(url)
-    # if fmt == 'bibtex':
-    #     req.add_header('Accept','application/x-bibtex')
-    try:
-        res = urlopen(req)
-    except HTTPError as err:
-        sys.stderr.write(f'bad URL: {url}\n')
-        raise
-    if res.getcode() == 200:
-        return res.read().decode()
-    raise IOError(f'HTTP GET error {res.getcode()} for {url}')
-
-
 
 # req = Request('https://inspirehep.net/api/literature?sort=mostrecent&q=arxiv:2404.01687%20or%20arxiv:2402.05383')
 # req.add_header('Accept','application/x-bibtex')
