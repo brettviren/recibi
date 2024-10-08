@@ -55,7 +55,7 @@ rule publist_to_bib:
     output:
         "publist.bib"
     shell: '''
-    recibi publist -d, {input} | recibi tag -t edgpubs -T collaboration -o {output} 
+    recibi publist -d, {input} | recibi tag -t edgpub -T collaboration -o {output} 
     '''
     
 
