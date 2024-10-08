@@ -2,6 +2,22 @@
 #+LATEX_HEADER: \usepackage[margin=1.0in]{geometry}
 #+options: ':t
 
+* tl;dr
+
+- Clone the overleaf document.
+- Clone brettviren/recibi from GitHub and install it and Snakemake in a Python venv.
+- Run ~recibi/examples/edgbib~ like:
+
+  #+begin_example
+  $ ./edgbib --config base=/path/to/overleaf/clone -p --directory tmp \
+     generated.bib -R get_talks -R get_snowmass -R get_edgpub install
+  $ cd /path/to/overleaf/clone
+  $ 
+  #+end_example
+
+ ~./examples/edgbib 
+
+
 * Context
 
 Publications and documents such as reports for funding review require bibliographies that are narrowed to a selection of reference defined based on various criteria such as. 
@@ -113,3 +129,46 @@ This command can be extended to any number of input bib files including those th
 
 See the file [[file:example.tex]] which uses two BibTeX files: [[file:generated.bib]] and [[file:curated.bib]].  These contrived and brief in order to show what can be done without getting lost in verbose listings.  The result of building the example is available as a [[file:example.pdf][PDF]] file.  See the text of the example for explanation details.
 
+* Problems
+
+** TeX capacity exceeded
+
+You see an error like:
+#+begin_example
+Runaway argument?
+{{{hash=GJ}{family={Grange}, familyi={G\bibinitperiod }, given={J.}, \ETC.
+! TeX capacity exceeded, sorry [main memory size=5000000].
+l.14906          giv
+                    en={T.},
+If you really absolutely need more capacity,
+you can ask a wizard to enlarge me.
+
+Here is how much of TeX's memory you used:
+ 39977 strings out of 477975
+ 995721 string characters out of 5839281
+ 5000001 words of memory out of 5000000
+ 59533 multiletter control sequences out of 15000+600000
+ 512600 words of font info for 33 fonts, out of 8000000 for 9000
+ 59 hyphenation exceptions out of 8191
+ 104i,1n,134p,1871b,850s stack positions out of 10000i,1000n,20000p,200000b,200000s
+!  ==> Fatal error occurred, no output PDF file produced! 
+#+end_example
+The "wizard" can try:
+#+begin_example
+$ sudo emacs -nw /etc/texmf/web2c/texmf.cnf
+#+end_example
+Increase size something larger than the number of "words or memory" shown above
+#+begin_example
+main_memory = 7999999
+save_size  = 7999999
+#+end_example
+After saving the file, run
+#+begin_example
+$ sudo fmtutil-sys --all
+#+end_example
+Then recompile the ~.tex~.  If it fails at the higher memory, one can repeat the
+above and increase the limit yet more.
+
+Note, failed biblatex runs may leave behind empty ~.bbl~ files leading to
+successful build of a PDF but no references.  Purge any intermediate files and
+rebuild the PDF.

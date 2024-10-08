@@ -2,6 +2,7 @@
 
 import re
 import csv
+from pathlib import Path
 import hashlib
 from .util import listify
 from pybtex.database.input import bibtex
@@ -121,6 +122,56 @@ def clean_cell(col, cell):
     return cell
 
 
+def tag_arxiv(infiles, match, tags_column, arxiv_column, delim='\t', skip=0):
+    '''
+    Load csv/tsv infiles and use columns for tags and arxiv: URLs.
+
+    Return dict mapping "arxiv:XXXX.YYYYY" to set of tags.
+    '''
+    def squash(val):
+        return val.strip().lower().replace(" ", "").replace("-", "").replace("/","")
+
+    if isinstance(infiles, str):
+        infiles = [infiles]
+    if isinstance(match, str):
+        match = [match]
+
+    entries = dict()
+    for infile in infiles:
+        rows = list(csv.reader(open(infile), delimiter=delim))
+        for row in rows[skip:]:
+            if not row or not row[0]:
+                continue
+
+            try:
+                tags = row[tags_column]
+            except IndexError:
+                warn(f'no tags column {tags_column} in: {row}')
+                continue;
+
+            tags = set([squash(one) for one in tags.split(",") if one.strip()])
+
+            try:
+                text = row[arxiv_column]
+            except IndexError:
+                warn(f'no arxiv column {arxiv_column} in row: {row}')
+                continue;
+            if not text.strip():
+                warn(f'empty arxiv column {arxiv_column} in row: {row}')
+                continue;
+                
+
+            for pat in match:
+                for one in re.findall(pat, text):
+                    if not one:
+                        continue;
+                    key = one[0].lower()
+
+                    val = entries.get(key, set())
+                    val.update(tags)
+                    entries[key] = val
+    return entries
+
 def trans(infiles, columns, kind, delim='\t', skip=0):
     '''
     Load infiles as delim-separated values and return bibs.
@@ -145,6 +196,50 @@ def trans(infiles, columns, kind, delim='\t', skip=0):
     out = BibliographyData()
     for key, entry in entries.items():
         out.add_entry(key, entry)
+    return out
+
+
+def loads(text=None, mutate=None, merge=None):
+    '''
+    Like load() but take text instead of file names.
+    '''
+    out = BibliographyData()
+
+    parser = bibtex.Parser()
+    bib = parser.parse_string(text)
+
+    for inkey, inentry in bib.entries.items():
+
+        item = (inkey, clean_entry(inentry))
+
+        # mutate may generate
+        queue = list()
+        if mutate:
+            got = mutate(*item)
+            if isinstance(got, tuple):
+                queue.append(got)
+            elif isinstance(got, list):
+                queue += got
+        else:
+            queue.append(item)
+
+        if not queue:
+            continue
+
+        if merge:
+            for key, entry in queue:
+                if key in out.entries:
+                    old = out.entries.pop(key)
+                    got = merge(key, old, entry)
+                    if isinstance(got, tuple):
+                        got = [got]
+                    if isinstance(got, list):
+                        for k, e in got:
+                            out.add_entry(k,e)
+                else:       # not seen, take whole
+                    out.add_entry(key, entry)
+        else:               # not merging, take all
+            out.add_entries(queue)
     return out
 
 
@@ -180,43 +275,27 @@ def load(bibfiles=None, mutate=None, merge=None):
     for bibfile in bibfiles:
         if not bibfile or bibfile == "-":
             bibfile = "/dev/stdin"
+        bibfile = Path(bibfile)
 
-        # parser keeps state so make it anew for each input
-        parser = bibtex.Parser()
-        bib = parser.parse_file(bibfile)
 
-        for inkey, inentry in bib.entries.items():
+        bib = loads(bibfile.open('r').read(), mutate=mutate, merge=merge)
 
-            item = (inkey, clean_entry(inentry))
+        if not merge:
+            out.add_entries(bib.entries.items());
+            continue
 
-            # mutate may generate
-            queue = list()
-            if mutate:
-                got = mutate(*item)
+        for key, entry in bib.entries.items():
+
+            if key in out.entries:
+                old = out.entries.pop(key)
+                got = merge(key, old, entry)
                 if isinstance(got, tuple):
-                    queue.append(got)
-                elif isinstance(got, list):
-                    queue += got
-            else:
-                queue.append(item)
-            
-            if not queue:
-                continue
-
-            if merge:
-                for key, entry in queue:
-                    if key in out.entries:
-                        old = out.entries.pop(key)
-                        got = merge(key, old, entry)
-                        if isinstance(got, tuple):
-                            got = [got]
-                        if isinstance(got, list):
-                            for k, e in got:
-                                out.add_entry(k,e)
-                    else:       # not seen, take whole
-                        out.add_entry(key, entry)
-            else:               # not merging, take all
-                out.add_entries(queue)
+                    got = [got]
+                if isinstance(got, list):
+                    for k, e in got:
+                        out.add_entry(k,e)
+            else:       # not seen, take whole
+                out.add_entry(key, entry)
 
     return out
 
@@ -239,7 +318,7 @@ def dump(bib, output, fmt='bibtex',
     with open(output, "w") as outfile:
         if fmt == 'bibtex':
             outfile.write(header + '\n')
-        outfile.write(bib.to_string(fmt))
+        outfile.write(bib.to_string(fmt).replace(r'\_','_'))
         if fmt == 'bibtex':
             outfile.write(trailer + '\n')
     return

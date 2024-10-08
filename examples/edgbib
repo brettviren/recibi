@@ -38,6 +38,28 @@ for k,v in dict(
 
 base = config['base']
 
+
+# Spreadsheet publication list
+rule get_publist:
+    input:
+        base + "/recibi/Publication-List.url"
+    output:
+        "PubList.txt"
+    shell: '''
+        curl -L $(cat {input}) > {output}
+    '''
+
+rule publist_to_bib:
+    input:
+        rules.get_publist.output
+    output:
+        "publist.bib"
+    shell: '''
+    recibi publist -d, {input} | recibi tag -t edgpubs -T collaboration -o {output} 
+    '''
+    
+
+# Spreadsheet talks list
 rule get_talks:
     input:
         base + "/recibi/Talks.url"
@@ -52,12 +74,11 @@ rule talks_to_bib:
         rules.get_talks.output
     output:
         "talks.bib"
-    params:
-        script = base + "/recibi/gglcsvtobibtex.py"
     shell: '''
     recibi csv -d, {input} | recibi tag -t talk -T collaboration -o {output} 
     '''
 
+# Spreadsheet Snowmass list
 rule get_snowmass:
     input:
         base + "/recibi/Snowmass.url"
@@ -76,6 +97,8 @@ rule snowmass_query:
     cut -f2 < "{input}" | tail +2 |grep -v '^$' | grep -v 'OSTI' | sed -e 's/^/arxiv:/' > "{output}"
     '''
 
+
+# Chao's doc
 
 rule get_edgpub:
     input:
@@ -151,7 +174,7 @@ rule tag:
 
 rule merge_bibs:    
     input:
-        'tagged-edgpub.bib', 'tagged-snowmass.bib', base + "/patch.bib", "talks.bib"
+        'publist.bib', 'tagged-edgpub.bib', 'tagged-snowmass.bib', base + "/patch.bib", "talks.bib"
     output:
         'generated.bib'
     shell: '''

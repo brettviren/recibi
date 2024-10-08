@@ -4,10 +4,13 @@ import re
 import click
 
 from recibi.matching import string_match, number_match
-from recibi.bib import load, dump, sort, trans, merge_patch
+from recibi.bib import load, loads, dump, sort, trans, merge_patch, tag_arxiv
 import recibi.inspire as inspire_api
 import recibi.osti as osti_api
 from recibi import apis
+
+from pybtex.database import parse_string as parse_bibtex_string
+
 import logging
 logging.basicConfig(filename='/dev/stderr', level=logging.INFO)
 logger = logging.getLogger("recibi")
@@ -19,6 +22,62 @@ debug = logger.debug
 @click.group()
 def cli():
     pass
+
+
+@cli.command("publist")
+@click.option("-d", "--delim", default=",",
+              help='The column delimiter (eg "," for CSV, "\t" for TSV')
+@click.option("-o", "--output", default="/dev/stdout",
+              help="Output file")
+@click.option("-t", "--tags-column", default=1, type=int,
+              help="The column (index counting from 0) that provides tags")
+@click.option("-a", "--arxiv-column", default=3, type=int,
+              help="The column (index counting from 0) that provide arxiv: URL")
+@click.option("-m", "--match", default=[r"(ar[Xx]iv:(\d+)\.(\d+))"], multiple=True,
+              help="Thing to match, default finds arxiv IDs")
+@click.option("-s", "--skip", default=1,
+              help="Number of leading rows to skip")
+@click.argument('textfiles', nargs=-1)
+def publist(delim, output, tags_column, arxiv_column, match, skip, textfiles):
+    '''
+    Produce bib file from csv/tsv file which provides columns for tags and
+    arxiv: urls and using arxiv URLs to query insipre.
+    '''
+    if delim.lower() == 'tab':
+        delim = '\t'
+
+    arxivs = tag_arxiv(textfiles, match, tags_column, arxiv_column, delim, skip);
+    print(arxivs)
+
+    query = list(arxivs.keys())
+    maxn = 10
+    chunks = list()
+
+    for group in [query[x:x+maxn] for x in range(0, len(query), maxn)]:
+        params = inspire_api.form_params(
+            q=group, sort="mostrecent", size="10", page="1", format="bibtex")
+        url = inspire_api.form_url("literature", None, params)
+        text = apis.get(url)
+        chunks.append(text)
+
+    bibdoc = '\n'.join(chunks)
+
+    def add_tags(key, entry):
+        eprint = entry.fields.get('eprint', None)
+        if not eprint:
+            return (key, entry)
+        akey = 'arxiv:' + eprint
+        tags = arxivs[akey]
+        old = entry.fields.get("keywords", None)
+        if old:
+            tags.update(set(old.split(",")))
+        tags = list(tags)
+        tags.sort()
+        tags = ','.join(tags)
+        entry.fields['keywords'] = tags
+        return (key, entry)
+
+    dump(sort(loads(bibdoc, mutate=add_tags)), output)
 
 
 @cli.command("parse")
@@ -215,7 +274,7 @@ def cmd_osti(output, format, query):
 @cli.command("inspire")
 @click.option("-o", "--output", default="/dev/stdout",
               help="Output file")
-@click.option("-T", "--type", default="literature",
+@click.option("-K", "--kind", default="literature",
               help="Set the 'identifier-type' URL location")
 @click.option("-V", "--value", default=None,
               help="Set the 'identifier-value' URL location (optional)")
@@ -237,7 +296,7 @@ def cmd_osti(output, format, query):
 @click.option("--maxn", default=10,
               help="Max number of search queries per GET")
 @click.argument("query", nargs=-1)
-def inspire(output, type, value, format, queries, sort, size, page,
+def inspire(output, kind, value, format, queries, sort, size, page,
             query_join, maxn, query):
     '''
     Access InspireHEP web API.
@@ -283,10 +342,11 @@ def inspire(output, type, value, format, queries, sort, size, page,
     for group in [query[x:x+maxn] for x in range(0, len(query), maxn)]:
         params = inspire_api.form_params(
             q=group, sort=sort, size=str(size), page=str(page), format=format)
-        url = inspire_api.form_url(type, value, params)
+        url = inspire_api.form_url(kind, value, params)
         text = apis.get(url)
         chunks.append(text)
 
+    print(type(chunks[0]))
     with open(output, "w") as out:
         out.write('\n'.join(chunks))
 
